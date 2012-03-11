@@ -1,0 +1,6 @@
+recursive-include *.py
+
+include README* LICENSE distribute_setup.py CHANGES* test.cfg
+
+
+
