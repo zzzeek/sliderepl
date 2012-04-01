@@ -343,13 +343,12 @@ class Deck(object):
     def from_path(cls, path, **options):
         """Create a Deck from slides embedded in a file at path."""
 
-        fh, deck = open(path), cls(path, **options)
-        cls._slides_from_file(fh, deck)
-        fh.close()
+        deck = cls(path, **options)
+        cls._slides_from_file(path, deck)
         return deck.slides and deck or None
 
     @classmethod
-    def _slides_from_file(cls, fh, deck):
+    def _slides_from_file(cls, path, deck):
         s_re = re.compile(r'### +slide::(?:\s*(\d+|end))?'
                           r'(?:\s+-\*-\s*(.*?)-\*-)?')
         f_re = re.compile(r'### +file::(.+)$')
@@ -361,13 +360,17 @@ class Deck(object):
         a_re = re.compile(r',\s*')
 
         slide  = None
-        lines = list(fh)
+        with open(path) as fh:
+            lines = list(fh)
         while lines:
             line = lines.pop(0)
             m = f_re.match(line)
             if m:
-                f = os.path.join(os.path.dirname(sys.argv[0]), m.group(1).strip())
-                cls._slides_from_file(open(f), deck)
+                f_path = os.path.normpath(
+                            os.path.join(
+                                os.path.dirname(path), 
+                                m.group(1).strip()))
+                cls._slides_from_file(f_path, deck)
                 if lines and not f_re.match(lines[0]):
                     lines.pop(0) # suppress next line
                 continue
