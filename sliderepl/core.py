@@ -423,9 +423,9 @@ class Deck(object):
             if number == 'end':
                 break
             slide = cls.Slide(deck, file=fh.name, index=len(deck.slides) + 1)
-            has_body = False
             for option in opts and a_re.split(opts) or []:
                 setattr(slide, option.strip(), True)
+            has_body = getattr(slide, 'no_clear', False)
 
     def show_banner(self):
         print self.banner
