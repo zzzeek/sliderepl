@@ -25,6 +25,7 @@ class Deck(object):
         self.path = path or '<no file>'
         self.slides = []
         self.current = 0
+        self.init_slide = None
         self.color = options.get('color', None)
         self._set_presentation(options.get('presentation', False))
         self._set_quick(options.get('quick', True))
@@ -187,6 +188,14 @@ class Deck(object):
             self.index = index
             self.title = None
 
+        def exec_silent(self, environ):
+            old_stdout = sys.stdout
+            sys.stdout = open("/dev/null")
+            for display, co in self.codeblocks:
+                exec co in environ
+            sys.stdout = old_stdout
+            print "% executed initial setup slide."
+
         def _banner(self, timer):
             banner = ""
 
@@ -236,8 +245,10 @@ class Deck(object):
                 echo and getattr(self, 'no_exec', False):
                 run = False
 
+
             for i, (display, co) in enumerate(self.codeblocks):
-                if echo and not getattr(self, 'no_echo', False):
+                no_echo = getattr(self, 'no_echo', False)
+                if echo and not no_echo:
                     shown = [getattr(sys, 'ps1', '>>> ') + display[0]]
 
                     space = False
@@ -332,6 +343,10 @@ class Deck(object):
         console = code.InteractiveConsole()
         global environ
         environ = console.locals
+
+        if deck.init_slide:
+            deck.init_slide.exec_silent(environ)
+
         console.raw_input = deck.readfunc
         if readline:
             readline.parse_and_bind('tab: complete')
@@ -417,7 +432,10 @@ class Deck(object):
 
             if slide:
                 slide._close()
-                deck.slides.append(slide)
+                if getattr(slide, "init", False):
+                    deck.init_slide = slide
+                else:
+                    deck.slides.append(slide)
 
             number, opts = m.groups()
             if number == 'end':
