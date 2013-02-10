@@ -1,13 +1,5 @@
 from setuptools import setup, find_packages
-import sys
 import os
-import re
-
-extra = {}
-if sys.version_info >= (3, 0):
-    extra.update(
-        use_2to3=True,
-    )
 
 readme = os.path.join(os.path.dirname(__file__), 'README.rst')
 
@@ -21,7 +13,7 @@ except ImportError:
     requires.append('argparse')
 
 setup(name='sliderepl',
-      version="1.0",
+      version="1.1",
       description="Runs a python script as a series of slides for presentation.",
       long_description=open(readme).read(),
       classifiers=[
@@ -44,8 +36,7 @@ setup(name='sliderepl',
       #test_suite = "nose.collector",
       zip_safe=False,
       install_requires=requires,
-      entry_points = {
-        'console_scripts': [ 'sliderepl = sliderepl.main:main' ],
-      },
-      **extra
+      entry_points={
+        'console_scripts': ['sliderepl = sliderepl.main:main'],
+      }
 )

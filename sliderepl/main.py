@@ -6,8 +6,8 @@ import sys
 
 def main(argv=None, **kwargs):
 
-    if sys.platform=='win32':
-        color_default= 'never'
+    if sys.platform == 'win32':
+        color_default = 'never'
     else:
         color_default = 'auto'
 
@@ -33,7 +33,7 @@ def main(argv=None, **kwargs):
     deck = None
     if os.path.exists("_config.py"):
         locals_ = {}
-        execfile("_config.py", locals_)
+        exec(compile(open("_config.py").read(), "_config.py", 'exec'), locals_)
         deck = locals_.get('deck')
     if deck is None:
         deck = Deck

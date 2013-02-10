@@ -1,12 +1,15 @@
+from .compat import StringIO
+from . import core
+
 import sys
-from StringIO import StringIO
+
 from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import get_lexer_by_name
-from sliderepl import core
 
 from pygments.token import Comment
 from pygments.formatters.terminal import TERMINAL_COLORS
+
 scheme = TERMINAL_COLORS.copy()
 scheme[Comment] = ('teal', 'turquoise')
 
@@ -40,7 +43,7 @@ class Deck(core.Deck):
     def highlight(self):
         """Toggle code highlighting."""
         self._highlight = not self._highlight
-        print "%% Code highlighting is now %s" % (self._highlight and "ON" or "OFF")
+        print("%% Code highlighting is now %s" % (self._highlight and "ON" or "OFF"))
 
     class Slide(core.Deck.Slide):
         def run(self, *args, **kwargs):

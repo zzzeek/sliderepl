@@ -1,16 +1,24 @@
 # sliderepl
 #   Copyright (c) Jason Kirtland <jek@discorporate.us>
+#   Copyright (c) Michael Bayer <mike_mp@zzzcomputing.com>
 #   sliderepl is released under the MIT License:
 #   http://www.opensource.org/licenses/mit-license.php
-#   Modified by Jason Kirtland and Mike Bayer for PyCon 2009
 
 environ = globals().copy()
-import code, inspect, itertools, os, re, sys, traceback
+import code
+import inspect
+import os
+import re
+import sys
+import traceback
 from datetime import datetime
 try:
-    import rlcompleter, readline
+    import rlcompleter
+    import readline
 except ImportError:
     readline = None
+
+from .compat import raw_input_, exec_
 
 if sys.platform == 'win32':
     clearcmd = "cls"
@@ -18,7 +26,7 @@ else:
     clearcmd = "clear"
 
 class Deck(object):
-    expose = ('next', 'goto', 'show', 'info', 'prev','quick',
+    expose = ('next', 'goto', 'show', 'info', 'prev', 'quick',
               'rerun', 'xecute', 'presentation', 'timer')
 
     def __init__(self, path=None, **options):
@@ -48,20 +56,22 @@ class Deck(object):
 
     def _set_show_timer(self, mode):
         self._show_timer = mode
-        print "%% show timer is now %s" % (self._show_timer and "ON" or "OFF")
+        print("%% show timer is now %s" % (self._show_timer and "ON" or "OFF"))
 
     def _set_presentation(self, mode):
         self._presentation = mode
-        print "%% presentation mode is now %s" % (self._presentation and "ON" or "OFF")
+        print("%% presentation mode is now %s" %
+                    (self._presentation and "ON" or "OFF")
+                )
 
     def presentation(self):
         """Toggle presentation mode"""
         self._set_presentation(not self._presentation)
 
     def quick(self):
-         """quick on|off, type enter to advance to the next slide."""
+        """quick on|off, type enter to advance to the next slide."""
 
-         self._set_quick(not self._quick)
+        self._set_quick(not self._quick)
 
     def timer(self):
         """Show current time in slide header"""
@@ -70,7 +80,9 @@ class Deck(object):
 
     def _set_quick(self, mode):
         self._quick = mode
-        print "%% quick mode (enter advances) is now %s"  % (self._quick and "ON" or "OFF")
+        print("%% quick mode (enter advances) is now %s" %
+                (self._quick and "ON" or "OFF")
+            )
 
     def xecute(self):
         """Execute the code for the current slide."""
@@ -104,7 +116,7 @@ class Deck(object):
             return
 
         if self.current >= len(self.slides):
-            print "% The slideshow is over."
+            print("% The slideshow is over.")
             return
         self.current += 1
 
@@ -120,11 +132,11 @@ class Deck(object):
             if self._presentation:
                 if not getattr(slide, 'no_clear', False):
                     os.system(clearcmd)
-                    print slide._banner(timer)
+                    print(slide._banner(timer))
                 else:
-                    print ""
+                    print("")
             else:
-                print slide._banner(timer)
+                print(slide._banner(timer))
 
         slide.run(run=run, echo=echo)
         if run != 'force' and getattr(slide, 'no_exec', False):
@@ -133,12 +145,12 @@ class Deck(object):
     def slide_actor(fn):
         def decorated(self, slide_number):
             if isinstance(slide_number, str) and not slide_number.isdigit():
-                print "%% Usage: %s slide_number" % fn.__name__
+                print("%% Usage: %s slide_number" % fn.__name__)
                 return
             num = int(slide_number)
             if num < 1 or num > len(self.slides):
-                print "%% Slide #%s is out of range (1 - %s)." % (
-                    num, len(self.slides))
+                print("%% Slide #%s is out of range (1 - %s)." % (
+                    num, len(self.slides)))
             else:
                 return fn(self, num)
         decorated.__doc__ = fn.__doc__
@@ -152,7 +164,8 @@ class Deck(object):
 
     @slide_actor
     def goto(self, slide_number):
-        """goto NUM, skip forward to another slide or go back to a previous slide."""
+        """goto NUM, skip forward to another slide or go
+        back to a previous slide."""
 
         self.pending_exec = False
         if slide_number <= self.current:
@@ -164,15 +177,16 @@ class Deck(object):
 
     def info(self):
         """Display information about this slide deck."""
-        print "%% Now at slide %s of %s from deck %s" % (
-            self.current, len(self.slides), self.path)
+        print("%% Now at slide %s of %s from deck %s" % (
+            self.current, len(self.slides), self.path))
 
     def commands(self):
         """Display this help message."""
         for cmd in ('?',) + self.expose:
-            print "% " + cmd + \
-                (cmd in self._letter_commands and " / " + self._letter_commands[cmd] or "")
-            print "%\t" + self._expose_map[cmd].__doc__
+            print("% " + cmd + \
+                (cmd in self._letter_commands and " / " +
+                                self._letter_commands[cmd] or ""))
+            print("%\t" + self._expose_map[cmd].__doc__)
 
     del slide_actor
 
@@ -190,11 +204,11 @@ class Deck(object):
 
         def exec_silent(self, environ):
             old_stdout = sys.stdout
-            sys.stdout = open("/dev/null")
+            sys.stdout = open("/dev/null", "w")
             for display, co in self.codeblocks:
-                exec co in environ
+                exec_(co, environ)
             sys.stdout = old_stdout
-            print "% executed initial setup slide."
+            print("% executed initial setup slide.")
 
         def _banner(self, timer):
             banner = ""
@@ -227,12 +241,13 @@ class Deck(object):
             if title or self.intro:
 
                 if title:
-                    banner += "| %s%s|\n" % (title, (" " * (box_size - len(title) - 2)))
+                    banner += "| %s%s|\n" % (
+                                title, (" " * (box_size - len(title) - 2)))
 
                 if self.intro:
                     banner += "\n".join(
-                                        "| %s%s|" % (l, (" " * (box_size - len(l) - 2)))
-                                        for l in self.intro) + "\n"
+                            "| %s%s|" % (l, (" " * (box_size - len(l) - 2)))
+                            for l in self.intro) + "\n"
 
             banner += "|%s%s |\n" % (" " * (box_size - len(header) - 2), header)
 
@@ -251,7 +266,6 @@ class Deck(object):
                 if echo and not no_echo:
                     shown = [getattr(sys, 'ps1', '>>> ') + display[0]]
 
-                    space = False
                     for l in display[1:]:
                         if l.startswith(' '):
                             shown.append(getattr(sys, 'ps2', '... ') + l)
@@ -267,21 +281,22 @@ class Deck(object):
                     Deck._add_history(''.join(display).rstrip())
                     shown = ''.join(shown).rstrip()
 
-                    print shown
+                    print(shown)
 
                     if len(display) > 1:
                         if not re.match(r'#[\s\n]', display[0]) or \
-                            (i + 1< len(self.codeblocks) and 
-                                not re.match(r'#[\s\n]', self.codeblocks[i+1][0][0])):
-                            print ""
+                            (i + 1 < len(self.codeblocks) and
+                                not re.match(r'#[\s\n]',
+                                        self.codeblocks[i + 1][0][0])):
+                            print("")
 
                 if run:
                     try:
-                        exec co in environ
+                        exec_(co, environ)
                     except:
                         traceback.print_exc()
             if not run:
-                print "%%% next to execute"
+                print("%%% next to execute")
                 #print getattr(sys, 'ps1', '>>> ') + ("# next to execute")
 
         def __str__(self):
@@ -314,12 +329,12 @@ class Deck(object):
             try:
                 return code.compile_command(''.join(self._stack), '<input>', style)
             except:
-                print "code:", ''.join(self._stack)
+                print("code:", ''.join(self._stack))
                 raise
 
         def _pop(self):
             self._stack.reverse()
-            lines = list(self._stack) #itertools.dropwhile(str.isspace, self._stack))
+            lines = list(self._stack)
             lines.reverse()
             self._stack = []
             return lines
@@ -374,7 +389,8 @@ class Deck(object):
         c_re = re.compile(r'#($| .*$)')
         a_re = re.compile(r',\s*')
 
-        slide  = None
+        slide = None
+        has_body = False
         with open(path) as fh:
             lines = list(fh)
         while lines:
@@ -383,11 +399,11 @@ class Deck(object):
             if m:
                 f_path = os.path.normpath(
                             os.path.join(
-                                os.path.dirname(path), 
+                                os.path.dirname(path),
                                 m.group(1).strip()))
                 cls._slides_from_file(f_path, deck)
                 if lines and not f_re.match(lines[0]):
-                    lines.pop(0) # suppress next line
+                    lines.pop(0)  # suppress next line
                 continue
 
             m = t_re.match(line)
@@ -446,22 +462,22 @@ class Deck(object):
             has_body = getattr(slide, 'no_clear', False)
 
     def show_banner(self):
-        print self.banner
+        print(self.banner)
 
     @property
     def banner(self):
 
         return """\
-%% 
+%%
 %% Slide Runner
 %%
 %% This is an interactive Python prompt.
 %% Enter "?" for help.
-%% Advance slides by pressing "enter" (quick mode), 
+%% Advance slides by pressing "enter" (quick mode),
 %% or entering the "n" or "next" command."""
 
     def readfunc(self, prompt=''):
-        line = raw_input(prompt)
+        line = raw_input_(prompt)
         if prompt == getattr(sys, 'ps1', '>>> '):
             tokens = line.split()
             if line == '' and self._quick:
@@ -470,8 +486,8 @@ class Deck(object):
             if tokens and tokens[0] in self._expose_map:
                 fn = self._expose_map[tokens[0]]
                 if len(tokens) != len(inspect.getargspec(fn)[0]):
-                    print "usage: %s %s" % (
-                        tokens[0], ' '.join(inspect.getargspec(fn)[0][1:]))
+                    print("usage: %s %s" % (
+                        tokens[0], ' '.join(inspect.getargspec(fn)[0][1:])))
                 else:
                     self._add_history(line)
                     fn(*tokens[1:])
