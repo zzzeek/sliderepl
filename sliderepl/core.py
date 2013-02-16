@@ -204,7 +204,7 @@ class Deck(object):
 
         def exec_silent(self, environ):
             old_stdout = sys.stdout
-            sys.stdout = open("/dev/null", "w")
+            sys.stdout = open(os.devnull, "w")
             for display, co in self.codeblocks:
                 exec_(co, environ)
             sys.stdout = old_stdout
