@@ -1,6 +1,6 @@
-recursive-include *.py
+include *.py
 
-include README* LICENSE distribute_setup.py CHANGES* test.cfg
+include README* LICENSE 
 
 
 
