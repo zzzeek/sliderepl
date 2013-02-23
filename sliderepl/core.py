@@ -42,15 +42,15 @@ class Deck(object):
         self._set_show_timer(options.get('timer', False))
         self.pending_exec = False
         self._letter_commands = {}
-        self._expose_map = dict((name, getattr(self, name))
+        self._expose_map = dict(("!%s" % name, getattr(self, name))
                                 for name in self.expose)
 
         for name in self.expose:
             c = name[0]
             if c in self._expose_map:
                 c = name[0:2]
-            self._expose_map[c] = getattr(self, name)
-            self._letter_commands[name] = c
+            self._expose_map["!%s" % c] = getattr(self, name)
+            self._letter_commands["!%s" % name] = "!%s" % c
         self._expose_map['?'] = self.commands
 
     def start(self):
@@ -168,7 +168,9 @@ class Deck(object):
 
     def commands(self):
         """Display this help message."""
-        for cmd in ('?',) + self.expose:
+        for cmd in ['?'] + [
+               "!%s" % exp for exp in self.expose
+            ]:
             print("% " + cmd + \
                 (cmd in self._letter_commands and " / " +
                                 self._letter_commands[cmd] or ""))
@@ -472,10 +474,12 @@ class Deck(object):
         if self._exec_on_return or prompt == sys.ps1:
             tokens = line.split()
             if self._exec_on_return or line == '':
-                tokens = ('next',)
+                tokens = ('!next',)
 
             self._exec_on_return = False
-            if tokens and tokens[0] in self._expose_map:
+            if tokens and \
+                    (tokens[0].startswith("!") or tokens[0] == '?') \
+                    and tokens[0] in self._expose_map:
                 fn = self._expose_map[tokens[0]]
                 if len(tokens) != len(inspect.getargspec(fn)[0]):
                     print("usage: %s %s" % (
