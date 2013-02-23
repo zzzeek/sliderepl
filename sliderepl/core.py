@@ -26,8 +26,11 @@ else:
     clearcmd = "clear"
 
 class Deck(object):
-    expose = ('next', 'goto', 'show', 'info', 'prev', 'quick',
-              'rerun', 'xecute', 'presentation', 'timer')
+    expose = ('next', 'goto', 'show', 'info', 'prev',
+              'rerun', 'presentation', 'timer')
+
+    _exec_on_return = False
+
 
     def __init__(self, path=None, **options):
         self.path = path or '<no file>'
@@ -36,7 +39,6 @@ class Deck(object):
         self.init_slide = None
         self.color = options.get('color', None)
         self._set_presentation(options.get('presentation', False))
-        self._set_quick(options.get('quick', True))
         self._set_show_timer(options.get('timer', False))
         self.pending_exec = False
         self._letter_commands = {}
@@ -68,27 +70,10 @@ class Deck(object):
         """Toggle presentation mode"""
         self._set_presentation(not self._presentation)
 
-    def quick(self):
-        """quick on|off, type enter to advance to the next slide."""
-
-        self._set_quick(not self._quick)
-
     def timer(self):
         """Show current time in slide header"""
 
         self._set_show_timer(not self._show_timer)
-
-    def _set_quick(self, mode):
-        self._quick = mode
-        print("%% quick mode (enter advances) is now %s" %
-                (self._quick and "ON" or "OFF")
-            )
-
-    def xecute(self):
-        """Execute the code for the current slide."""
-
-        self._do_slide(self.current, run=True, echo=False)
-        self.pending_exec = False
 
     def rerun(self):
         """Re-run the current slide."""
@@ -112,11 +97,12 @@ class Deck(object):
         """Advance to the next slide."""
 
         if self.pending_exec:
-            self.xecute()
+            self._do_slide(self.current, run=True, echo=False)
+            self.pending_exec = False
             return
 
         if self.current >= len(self.slides):
-            print("% The slideshow is over.")
+            print("%% The slideshow is over.")
             return
         self.current += 1
 
@@ -191,6 +177,11 @@ class Deck(object):
     del slide_actor
 
     class Slide(object):
+        no_clear = False
+        no_exec = False
+        init = False
+        title = None
+
         def __init__(self, deck, file, index):
             self.deck = deck
             self.codeblocks = []
@@ -200,7 +191,6 @@ class Deck(object):
             self._level = None
             self.file = file
             self.index = index
-            self.title = None
 
         def exec_silent(self, environ):
             old_stdout = sys.stdout
@@ -208,7 +198,7 @@ class Deck(object):
             for display, co in self.codeblocks:
                 exec_(co, environ)
             sys.stdout = old_stdout
-            print("% executed initial setup slide.")
+            print("%% executed initial setup slide.")
 
         def _banner(self, timer):
             banner = ""
@@ -260,26 +250,37 @@ class Deck(object):
                 echo and getattr(self, 'no_exec', False):
                 run = False
 
-
             for i, (display, co) in enumerate(self.codeblocks):
+                last_block = i == len(self.codeblocks) - 1
+
                 no_echo = getattr(self, 'no_echo', False)
                 if echo and not no_echo:
-                    shown = [getattr(sys, 'ps1', '>>> ') + display[0]]
+                    shown = []
 
-                    for l in display[1:]:
-                        if l.startswith(' '):
-                            shown.append(getattr(sys, 'ps2', '... ') + l)
+                    if not run:
+                        while not display[-1].strip():
+                            display.pop(-1)
+
+                    for j, l in enumerate(display):
+                        if j == 0:
+                            to_show = sys.ps1 + l
+                        elif l.startswith(' '):
+                            to_show = sys.ps2 + l
                         elif not l.isspace():
-                            shown.append(getattr(sys, 'ps1', '>>> ') + l)
+                            to_show = sys.ps1 + l
                         else:
-                            shown.append(l)
+                            to_show = l
 
-                    #shown.extend([getattr(sys, 'ps2', '... ') + l
-                    #                      for l in display[1:] if not ])
+                        to_show = to_show.rstrip()
 
+                        if not run and \
+                            last_block and \
+                            j == len(display) - 1:
+                            self.deck._exec_on_return = True
+                        shown.append(to_show)
 
                     Deck._add_history(''.join(display).rstrip())
-                    shown = ''.join(shown).rstrip()
+                    shown = '\n'.join(shown).rstrip()
 
                     print(shown)
 
@@ -295,9 +296,6 @@ class Deck(object):
                         exec_(co, environ)
                     except:
                         traceback.print_exc()
-            if not run:
-                print("%%% next to execute")
-                #print getattr(sys, 'ps1', '>>> ') + ("# next to execute")
 
         def __str__(self):
             return ''.join(self.lines)
@@ -327,7 +325,8 @@ class Deck(object):
         def _compile(self):
             style = getattr(self, 'no_return', False) and 'exec' or 'single'
             try:
-                return code.compile_command(''.join(self._stack), '<input>', style)
+                return code.compile_command(
+                                ''.join(self._stack), '<input>', style)
             except:
                 print("code:", ''.join(self._stack))
                 raise
@@ -379,15 +378,12 @@ class Deck(object):
 
     @classmethod
     def _slides_from_file(cls, path, deck):
-        s_re = re.compile(r'### +slide::(?:\s*(\d+|end))?'
-                          r'(?:\s+-\*-\s*(.*?)-\*-)?')
+        s_re = re.compile(r'### +slide::(.+)?$')
         f_re = re.compile(r'### +file::(.+)$')
         t_re = re.compile(r'### +title::(.+)$')
         t_re_2 = re.compile(r'^#####* (.+) #####*$')
 
-        e_re = re.compile(r'### +encoded::')
         c_re = re.compile(r'#($| .*$)')
-        a_re = re.compile(r',\s*')
 
         slide = None
         has_body = False
@@ -427,18 +423,6 @@ class Deck(object):
                 elif slide.intro:
                     slide.intro.append("")
 
-            m = e_re.match(line)
-            if m:
-                encoded = ""
-                while lines:
-                    line = lines.pop(0)
-                    if not line.startswith("###"):
-                        break
-                    else:
-                        encoded += line[4:]
-                for line in encoded.decode("base64").decode("zlib").split("\n"):
-                    slide._append(line + "\n")
-
             m = s_re.match(line)
             if not m:
                 if slide:
@@ -453,13 +437,17 @@ class Deck(object):
                 else:
                     deck.slides.append(slide)
 
-            number, opts = m.groups()
-            if number == 'end':
-                break
             slide = cls.Slide(deck, file=fh.name, index=len(deck.slides) + 1)
-            for option in opts and a_re.split(opts) or []:
-                setattr(slide, option.strip(), True)
-            has_body = getattr(slide, 'no_clear', False)
+            opts = m.group(1)
+            if opts:
+                for opt in opts:
+                    if opt == 'p':
+                        slide.no_exec = True
+                    elif opt == 'i':
+                        slide.no_clear = True
+                    elif opt == 's':
+                        slide.init = True
+            has_body = slide.no_clear
 
     def show_banner(self):
         print(self.banner)
@@ -473,16 +461,20 @@ class Deck(object):
 %%
 %% This is an interactive Python prompt.
 %% Enter "?" for help.
-%% Advance slides by pressing "enter" (quick mode),
+%% Advance slides by pressing "enter",
 %% or entering the "n" or "next" command."""
 
     def readfunc(self, prompt=''):
+        if self._exec_on_return:
+            prompt = "\n[press return to run code]"
+
         line = raw_input_(prompt)
-        if prompt == getattr(sys, 'ps1', '>>> '):
+        if self._exec_on_return or prompt == sys.ps1:
             tokens = line.split()
-            if line == '' and self._quick:
+            if self._exec_on_return or line == '':
                 tokens = ('next',)
 
+            self._exec_on_return = False
             if tokens and tokens[0] in self._expose_map:
                 fn = self._expose_map[tokens[0]]
                 if len(tokens) != len(inspect.getargspec(fn)[0]):
@@ -493,6 +485,9 @@ class Deck(object):
                     fn(*tokens[1:])
                 return ''
         return line
+
+    def _highlight_text(self, text):
+        return text
 
     @classmethod
     def _add_history(cls, line):

@@ -43,15 +43,24 @@ class Deck(core.Deck):
     def highlight(self):
         """Toggle code highlighting."""
         self._highlight = not self._highlight
-        print("%% Code highlighting is now %s" % (self._highlight and "ON" or "OFF"))
+        print("%% Code highlighting is now %s" %
+                (self._highlight and "ON" or "OFF"))
+
+    def _highlight_text(self, text):
+        bg = self.color == 'dark' and 'dark' or 'light'
+        if self.color in ('auto', 'light', 'dark'):
+            content = highlight(
+                text, _pycon_lexer,
+                    TerminalFormatter(bg=bg, colorscheme=scheme))
+        else:
+            content = text
+        return content
 
     class Slide(core.Deck.Slide):
         def run(self, *args, **kwargs):
             if not self.deck._highlight:
                 core.Deck.Slide.run(self, *args, **kwargs)
                 return
-
-            bg = self.deck.color == 'dark' and 'dark' or 'light'
 
             io = StringIO()
             stdout, stderr = self.deck.original_stdout, sys.stderr
@@ -61,11 +70,7 @@ class Deck(core.Deck):
                 sys.stderr = io
                 try:
                     core.Deck.Slide.run(self, *args, **kwargs)
-                    if self.deck.color in ('auto', 'light', 'dark'):
-                        content = highlight(
-                            io.getvalue(), _pycon_lexer, TerminalFormatter(bg=bg, colorscheme=scheme))
-                    else:
-                        content = io.getvalue()
+                    content = self.deck._highlight_text(io.getvalue())
                 except:
                     stdout.write(io.getvalue())
                     raise
