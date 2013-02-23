@@ -2,7 +2,7 @@ from .compat import StringIO
 from . import core
 
 import sys
-
+import re
 from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import get_lexer_by_name
@@ -49,9 +49,15 @@ class Deck(core.Deck):
     def _highlight_text(self, text):
         bg = self.color == 'dark' and 'dark' or 'light'
         if self.color in ('auto', 'light', 'dark'):
+            whitespace = re.match(r'(.*)(\s+)$', text, re.S)
+            if whitespace:
+                content = whitespace.group(1)
+                whitespace = whitespace.group(2)
             content = highlight(
                 text, _pycon_lexer,
                     TerminalFormatter(bg=bg, colorscheme=scheme))
+            if whitespace:
+                content += whitespace
         else:
             content = text
         return content

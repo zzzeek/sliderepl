@@ -116,11 +116,12 @@ class Deck(object):
             timer = ""
         if echo:
             if self._presentation:
-                if not getattr(slide, 'no_clear', False):
+                if not slide.no_clear:
                     os.system(clearcmd)
                     print(slide._banner(timer))
                 else:
                     print("")
+                    print(slide._banner(timer, True))
             else:
                 print(slide._banner(timer))
 
@@ -181,6 +182,7 @@ class Deck(object):
     class Slide(object):
         no_clear = False
         no_exec = False
+        no_echo = False
         init = False
         title = None
 
@@ -202,17 +204,23 @@ class Deck(object):
             sys.stdout = old_stdout
             print("%% executed initial setup slide.")
 
-        def _banner(self, timer):
+        def _banner(self, timer, half=True):
+            # not doing the full banners for now
+
             banner = ""
 
             box_size = 63
 
-            header = "%s / %d" % (self.file, self.index)
-            if timer:
-                header += " / " + timer
+            if not half:
+                header = "%s / %d" % (self.file, self.index)
+                if timer:
+                    header += " / " + timer
 
-            if header:
-                box_size = max(box_size, len(header))
+                if header:
+                    box_size = max(box_size, len(header))
+            else:
+                if not self.title and not self.intro:
+                    return ""
 
             title = None
 
@@ -241,7 +249,8 @@ class Deck(object):
                             "| %s%s|" % (l, (" " * (box_size - len(l) - 2)))
                             for l in self.intro) + "\n"
 
-            banner += "|%s%s |\n" % (" " * (box_size - len(header) - 2), header)
+            if not half:
+                banner += "|%s%s |\n" % (" " * (box_size - len(header) - 2), header)
 
             banner += "+%s+\n" % ("-" * (box_size - 1))
 
@@ -255,7 +264,7 @@ class Deck(object):
             for i, (display, co) in enumerate(self.codeblocks):
                 last_block = i == len(self.codeblocks) - 1
 
-                no_echo = getattr(self, 'no_echo', False)
+                no_echo = self.no_echo
                 if echo and not no_echo:
                     shown = []
 
@@ -282,9 +291,9 @@ class Deck(object):
                         shown.append(to_show)
 
                     Deck._add_history(''.join(display).rstrip())
-                    shown = '\n'.join(shown).rstrip()
+                    shown = "\n" + '\n'.join(shown).rstrip()
 
-                    print(shown)
+                    sys.stdout.write(shown)
 
                     if len(display) > 1:
                         if not re.match(r'#[\s\n]', display[0]) or \
@@ -298,6 +307,8 @@ class Deck(object):
                         exec_(co, environ)
                     except:
                         traceback.print_exc()
+            if run:
+                print ("\n")
 
         def __str__(self):
             return ''.join(self.lines)
@@ -323,6 +334,10 @@ class Deck(object):
                 co = self._compile()
                 assert co
                 self.codeblocks.append((self._pop(), co))
+
+            if self.intro:
+                while not self.intro[-1].strip():
+                    self.intro.pop(-1)
 
         def _compile(self):
             style = getattr(self, 'no_return', False) and 'exec' or 'single'
@@ -385,10 +400,9 @@ class Deck(object):
         t_re = re.compile(r'### +title::(.+)$')
         t_re_2 = re.compile(r'^#####* (.+) #####*$')
 
-        c_re = re.compile(r'#($| .*$)')
+        c_re = re.compile(r'#(?: (.*))?$')
 
         slide = None
-        has_body = False
         with open(path) as fh:
             lines = list(fh)
         while lines:
@@ -414,13 +428,15 @@ class Deck(object):
                     slide.lines = []
                 continue
 
-            if slide and not has_body:
+            if slide:
                 m = c_re.match(line)
                 if m:
-                    slide.intro.append(m.group(1).strip())
+                    if m.group(1):
+                        slide.intro.append(m.group(1).rstrip())
+                    else:
+                        slide.intro.append("")
                     continue
                 elif not line.isspace():
-                    has_body = True
                     slide.lines = []
                 elif slide.intro:
                     slide.intro.append("")
@@ -449,7 +465,6 @@ class Deck(object):
                         slide.no_clear = True
                     elif opt == 's':
                         slide.init = True
-            has_body = slide.no_clear
 
     def show_banner(self):
         print(self.banner)
