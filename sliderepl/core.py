@@ -17,13 +17,40 @@ try:
     import readline
 except ImportError:
     readline = None
-
 from .compat import raw_input_, exec_
 
 if sys.platform == 'win32':
     clearcmd = "cls"
 else:
     clearcmd = "clear"
+
+class SysOutStack(object):
+    def __init__(self):
+        self.stack = [sys.stdout]
+        sys.stdout = self
+
+    def write(self, data):
+        self.stack[-1].write(data)
+
+    def flush(self, *args):
+        self.stack[-1].flush()
+
+    class _PushCtx(object):
+        def __init__(self, parent):
+            self.parent = parent
+        def __enter__(self):
+            pass
+        def __exit__(self, *args):
+            self.parent.pop()
+
+    def push(self, buf):
+        self.stack.append(buf)
+        return SysOutStack._PushCtx(self)
+
+    def pop(self):
+        return self.stack.pop()
+
+sysout = SysOutStack()
 
 class Deck(object):
     expose = ('next', 'goto', 'show', 'info', 'prev',
@@ -53,8 +80,19 @@ class Deck(object):
             self._letter_commands["!%s" % name] = "!%s" % c
         self._expose_map['?'] = self.commands
 
+    @property
+    def ps1(self):
+        return getattr(sys, 'ps1', '>>> ')
+
+    @property
+    def ps2(self):
+        return getattr(sys, 'ps2', '... ')
+
     def start(self):
         pass
+
+    def _as_silent(self):
+        return sysout.push(open(os.devnull, "w"))
 
     def _set_show_timer(self, mode):
         self._show_timer = mode
@@ -196,12 +234,12 @@ class Deck(object):
             self.file = file
             self.index = index
 
+
         def exec_silent(self, environ):
-            old_stdout = sys.stdout
-            sys.stdout = open(os.devnull, "w")
-            for display, co in self.codeblocks:
-                exec_(co, environ)
-            sys.stdout = old_stdout
+
+            with self.deck._as_silent():
+                for display, co in self.codeblocks:
+                    exec_(co, environ)
             print("%% executed initial setup slide.")
 
         def _banner(self, timer, half=True):
@@ -274,11 +312,11 @@ class Deck(object):
 
                     for j, l in enumerate(display):
                         if j == 0:
-                            to_show = sys.ps1 + l
+                            to_show = self.deck.ps1 + l
                         elif l.startswith(' '):
-                            to_show = sys.ps2 + l
+                            to_show = self.deck.ps2 + l
                         elif not l.isspace():
-                            to_show = sys.ps1 + l
+                            to_show = self.deck.ps1 + l
                         else:
                             to_show = l
 
@@ -293,7 +331,7 @@ class Deck(object):
                     Deck._add_history(''.join(display).rstrip())
                     shown = "\n" + '\n'.join(shown).rstrip()
 
-                    sys.stdout.write(shown)
+                    sysout.write(shown)
 
                     if len(display) > 1:
                         if not re.match(r'#[\s\n]', display[0]) or \
@@ -360,12 +398,15 @@ class Deck(object):
         """Run an interactive session for a Deck and exit when complete."""
         if path is None:
             path = sys.argv[0]
+
         deck = cls.from_path(path, **options)
         if not deck:
             sys.stderr.write("Aborting: no slides!\n")
             sys.exit(-1)
 
+
         deck.start()
+
 
         if options.get('run_all'):
             deck.goto(len(deck.slides))
@@ -486,7 +527,7 @@ class Deck(object):
             prompt = "\n[press return to run code]"
 
         line = raw_input_(prompt)
-        if self._exec_on_return or prompt == sys.ps1:
+        if self._exec_on_return or prompt == self.ps1:
             tokens = line.split()
             if self._exec_on_return or line == '':
                 tokens = ('!next',)

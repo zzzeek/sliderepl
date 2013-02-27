@@ -1,7 +1,6 @@
 from .compat import StringIO
 from . import core
 
-import sys
 import re
 from pygments import highlight
 from pygments.formatters import TerminalFormatter
@@ -18,26 +17,12 @@ scheme[Comment] = ('teal', 'turquoise')
 _pycon_lexer = get_lexer_by_name('pycon')
 
 
-class DivertableOutput(object):
-    def __init__(self, fh):
-        self.fh = fh
-        self.divert = None
-
-    def write(self, data):
-        actor = self.divert or self.fh
-        actor.write(data)
-
-    def flush(self, *args):
-        actor = self.divert or self.fh
-        actor.flush(*args)
 
 class Deck(core.Deck):
     expose = core.Deck.expose + ("highlight",)
 
     def __init__(self, path, **options):
         core.Deck.__init__(self, path, **options)
-        self.original_stdout = sys.stdout
-        self.stdout = DivertableOutput(sys.stdout)
         self._highlight = True
 
     def highlight(self):
@@ -69,22 +54,9 @@ class Deck(core.Deck):
                 return
 
             io = StringIO()
-            stdout, stderr = self.deck.original_stdout, sys.stderr
-            try:
-                self.deck.stdout.divert = io
-                sys.stdout = io
-                sys.stderr = io
-                try:
-                    core.Deck.Slide.run(self, *args, **kwargs)
-                    content = self.deck._highlight_text(io.getvalue())
-                except:
-                    stdout.write(io.getvalue())
-                    raise
-                else:
-                    stdout.write(content)
-            finally:
-                sys.stdout = stdout
-                sys.stderr = stderr
-                self.deck.stdout.divert = None
+            with core.sysout.push(io):
+                core.Deck.Slide.run(self, *args, **kwargs)
+                content = self.deck._highlight_text(io.getvalue())
+            core.sysout.write(content)
 
 
