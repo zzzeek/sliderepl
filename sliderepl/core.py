@@ -24,36 +24,6 @@ if sys.platform == 'win32':
 else:
     clearcmd = "clear"
 
-class SysOutStack(object):
-    def __init__(self):
-        self.stack = [sys.stdout]
-
-    def write(self, data):
-        self.stack[-1].write(data)
-
-    def flush(self, *args):
-        self.stack[-1].flush()
-
-    class _PushCtx(object):
-        def __init__(self, parent):
-            self.parent = parent
-        def __enter__(self):
-            pass
-        def __exit__(self, *args):
-            self.parent.pop()
-
-    def push(self, buf):
-        self.stack.append(buf)
-        sys.stdout = self.stack[-1]
-        return SysOutStack._PushCtx(self)
-
-    def pop(self):
-        assert len(self.stack) > 1
-        val = self.stack.pop()
-        sys.stdout = self.stack[-1]
-        return val
-
-sysout = SysOutStack()
 
 class Deck(object):
     expose = ('next', 'goto', 'show', 'info', 'prev',
@@ -313,25 +283,27 @@ class Deck(object):
                         else:
                             to_show = l
 
-                        to_show = to_show.rstrip()
+                        to_show = to_show #.rstrip()
 
                         if not run and \
-                            last_block and \
-                            j == len(display) - 1:
+                                last_block and \
+                                j == len(display) - 1:
                             self.deck._exec_on_return = True
                         shown.append(to_show)
 
                     Deck._add_history(''.join(display).rstrip())
-                    shown = "\n" + '\n'.join(shown).rstrip()
+                    shown = ''.join(shown)   #+ "\n" #.rstrip() + "\n"
 
-                    sysout.write(shown)
+                    if last_block:
+                        shown = shown.rstrip() + "\n"
+                    sys.stdout.write(self.deck._highlight_text(shown))
 
-                    if len(display) > 1:
-                        if not re.match(r'#[\s\n]', display[0]) or \
-                            (i + 1 < len(self.codeblocks) and
-                                not re.match(r'#[\s\n]',
-                                        self.codeblocks[i + 1][0][0])):
-                            print("")
+                    #if len(display) > 1:
+                    #    if not re.match(r'#[\s\n]', display[0]) or \
+                    #       (i + 1 < len(self.codeblocks) and
+                    #            not re.match(r'#[\s\n]',
+                    #                            self.codeblocks[i + 1][0][0])):
+                    #        print("")
 
                 if run:
                     try:
@@ -339,7 +311,7 @@ class Deck(object):
                     except:
                         traceback.print_exc()
             if run:
-                print ("\n")
+                print ("")
 
         def __str__(self):
             return ''.join(self.lines)

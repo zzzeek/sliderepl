@@ -34,29 +34,16 @@ class Deck(core.Deck):
     def _highlight_text(self, text):
         bg = self.color == 'dark' and 'dark' or 'light'
         if self.color in ('auto', 'light', 'dark'):
-            whitespace = re.match(r'(.*)(\s+)$', text, re.S)
+            whitespace = re.match(r'(.*?)(\s+)$', text, re.S)
             if whitespace:
-                content = whitespace.group(1)
+                text = whitespace.group(1)
                 whitespace = whitespace.group(2)
             content = highlight(
                 text, _pycon_lexer,
                     TerminalFormatter(bg=bg, colorscheme=scheme))
             if whitespace:
-                content += whitespace
+                content = content.rstrip() + whitespace
         else:
             content = text
         return content
-
-    class Slide(core.Deck.Slide):
-        def run(self, *args, **kwargs):
-            if not self.deck._highlight:
-                core.Deck.Slide.run(self, *args, **kwargs)
-                return
-
-            io = StringIO()
-            with core.sysout.push(io):
-                core.Deck.Slide.run(self, *args, **kwargs)
-                content = self.deck._highlight_text(io.getvalue())
-            core.sysout.write(content)
-
 
