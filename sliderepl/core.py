@@ -27,7 +27,6 @@ else:
 class SysOutStack(object):
     def __init__(self):
         self.stack = [sys.stdout]
-        sys.stdout = self
 
     def write(self, data):
         self.stack[-1].write(data)
@@ -45,10 +44,14 @@ class SysOutStack(object):
 
     def push(self, buf):
         self.stack.append(buf)
+        sys.stdout = self.stack[-1]
         return SysOutStack._PushCtx(self)
 
     def pop(self):
-        return self.stack.pop()
+        assert len(self.stack) > 1
+        val = self.stack.pop()
+        sys.stdout = self.stack[-1]
+        return val
 
 sysout = SysOutStack()
 
@@ -91,9 +94,6 @@ class Deck(object):
     def start(self):
         pass
 
-    def _as_silent(self):
-        return sysout.push(open(os.devnull, "w"))
-
     def _set_show_timer(self, mode):
         self._show_timer = mode
         print("%% show timer is now %s" % (self._show_timer and "ON" or "OFF"))
@@ -101,8 +101,7 @@ class Deck(object):
     def _set_presentation(self, mode):
         self._presentation = mode
         print("%% presentation mode is now %s" %
-                    (self._presentation and "ON" or "OFF")
-                )
+                    (self._presentation and "ON" or "OFF"))
 
     def presentation(self):
         """Toggle presentation mode"""
@@ -235,12 +234,6 @@ class Deck(object):
             self.index = index
 
 
-        def exec_silent(self, environ):
-
-            with self.deck._as_silent():
-                for display, co in self.codeblocks:
-                    exec_(co, environ)
-            print("%% executed initial setup slide.")
 
         def _banner(self, timer, half=True):
             # not doing the full banners for now
@@ -417,7 +410,9 @@ class Deck(object):
         environ = console.locals
 
         if deck.init_slide:
-            deck.init_slide.exec_silent(environ)
+            for display, co in deck.init_slide.codeblocks:
+                exec_(co, environ)
+            print("%% executed initial setup slide.")
 
         console.raw_input = deck.readfunc
         if readline:
