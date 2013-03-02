@@ -128,7 +128,7 @@ class Deck(object):
                     print(slide._banner(timer))
                 else:
                     print("")
-                    print(slide._banner(timer, True))
+                    print(slide._banner(timer))
             else:
                 print(slide._banner(timer))
 
@@ -205,14 +205,14 @@ class Deck(object):
 
 
 
-        def _banner(self, timer, half=True):
+        def _banner(self, timer):
             # not doing the full banners for now
 
             banner = ""
 
             box_size = 63
 
-            if not half:
+            if False:
                 header = "%s / %d" % (self.file, self.index)
                 if timer:
                     header += " / " + timer
@@ -250,10 +250,15 @@ class Deck(object):
                             "| %s%s|" % (l, (" " * (box_size - len(l) - 2)))
                             for l in self.intro) + "\n"
 
-            if not half:
-                banner += "|%s%s |\n" % (" " * (box_size - len(header) - 2), header)
+            index = " (%d / %d) " % (self.index, len(self.deck.slides))
 
-            banner += "+%s+\n" % ("-" * (box_size - 1))
+            left_line = box_size - len(index) - 3
+            right_line = box_size - left_line - len(index) - 1
+            banner += "+%s+\n" % (
+                                ("-" * (left_line)) +
+                                index +
+                                ("-" * (right_line))
+                            )
 
             return banner
 
