@@ -27,7 +27,7 @@ else:
 
 class Deck(object):
     expose = ('next', 'goto', 'show', 'info', 'prev',
-              'rerun', 'presentation', 'timer')
+              'rerun', 'presentation')
 
     _exec_on_return = False
 
@@ -39,7 +39,6 @@ class Deck(object):
         self.init_slide = None
         self.color = options.get('color', None)
         self._set_presentation(options.get('presentation', False))
-        self._set_show_timer(options.get('timer', False))
         self.pending_exec = False
         self._letter_commands = {}
         self._expose_map = dict(("!%s" % name, getattr(self, name))
@@ -54,6 +53,10 @@ class Deck(object):
         self._expose_map['?'] = self.commands
 
     @property
+    def highlight_stdout(self):
+        return sys.stdout
+
+    @property
     def ps1(self):
         return getattr(sys, 'ps1', '>>> ')
 
@@ -64,10 +67,6 @@ class Deck(object):
     def start(self):
         pass
 
-    def _set_show_timer(self, mode):
-        self._show_timer = mode
-        print("%% show timer is now %s" % (self._show_timer and "ON" or "OFF"))
-
     def _set_presentation(self, mode):
         self._presentation = mode
         print("%% presentation mode is now %s" %
@@ -76,11 +75,6 @@ class Deck(object):
     def presentation(self):
         """Toggle presentation mode"""
         self._set_presentation(not self._presentation)
-
-    def timer(self):
-        """Show current time in slide header"""
-
-        self._set_show_timer(not self._show_timer)
 
     def rerun(self):
         """Re-run the current slide."""
@@ -117,20 +111,16 @@ class Deck(object):
 
     def _do_slide(self, num, run=True, echo=True):
         slide = self.slides[num - 1]
-        if self._show_timer:
-            timer = " " + datetime.now().strftime("%H:%M:%S")
-        else:
-            timer = ""
         if echo:
             if self._presentation:
                 if not slide.no_clear:
                     os.system(clearcmd)
-                    print(slide._banner(timer))
+                    print(slide._banner())
                 else:
                     print("")
-                    print(slide._banner(timer))
+                    print(slide._banner())
             else:
-                print(slide._banner(timer))
+                print(slide._banner())
 
         slide.run(run=run, echo=echo)
         if run != 'force' and getattr(slide, 'no_exec', False):
@@ -152,14 +142,13 @@ class Deck(object):
 
     @slide_actor
     def show(self, slide_number):
-        """show NUM, display a slide without executing it."""
+        """show slide <number>, display a slide without executing it."""
 
         self._do_slide(slide_number, False)
 
     @slide_actor
     def goto(self, slide_number):
-        """goto NUM, skip forward to another slide or go
-        back to a previous slide."""
+        """goto slide <number>"""
 
         self.pending_exec = False
         if slide_number <= self.current:
@@ -177,12 +166,15 @@ class Deck(object):
     def commands(self):
         """Display this help message."""
         for cmd in ['?'] + [
-               "!%s" % exp for exp in self.expose
-            ]:
-            print("% " + cmd + \
-                (cmd in self._letter_commands and " / " +
-                                self._letter_commands[cmd] or ""))
-            print("%\t" + self._expose_map[cmd].__doc__)
+                    "!%s" % exp for exp in self.expose
+                ]:
+
+            line_start = "% " + cmd + \
+                        (cmd in self._letter_commands and " / " +
+                        self._letter_commands[cmd] or "")
+
+            space = " " * (25 - len(line_start))
+            print(line_start + space + self._expose_map[cmd].__doc__)
 
     del slide_actor
 
@@ -203,25 +195,15 @@ class Deck(object):
             self.file = file
             self.index = index
 
-
-
-        def _banner(self, timer):
+        def _banner(self):
             # not doing the full banners for now
 
             banner = ""
 
             box_size = 63
 
-            if False:
-                header = "%s / %d" % (self.file, self.index)
-                if timer:
-                    header += " / " + timer
-
-                if header:
-                    box_size = max(box_size, len(header))
-            else:
-                if not self.title and not self.intro:
-                    return ""
+            if not self.title and not self.intro:
+                return ""
 
             title = None
 
@@ -289,7 +271,7 @@ class Deck(object):
                         else:
                             to_show = l
 
-                        to_show = to_show #.rstrip()
+                        to_show = to_show
 
                         if not run and \
                                 last_block and \
@@ -298,18 +280,11 @@ class Deck(object):
                         shown.append(to_show)
 
                     Deck._add_history(''.join(display).rstrip())
-                    shown = ''.join(shown)   #+ "\n" #.rstrip() + "\n"
+                    shown = ''.join(shown)
 
                     if last_block:
                         shown = shown.rstrip() + "\n"
                     sys.stdout.write(self.deck._highlight_text(shown))
-
-                    #if len(display) > 1:
-                    #    if not re.match(r'#[\s\n]', display[0]) or \
-                    #       (i + 1 < len(self.codeblocks) and
-                    #            not re.match(r'#[\s\n]',
-                    #                            self.codeblocks[i + 1][0][0])):
-                    #        print("")
 
                 if run:
                     try:
