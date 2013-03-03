@@ -226,9 +226,9 @@ class Deck(object):
             title = None
 
             if self.title:
-                title = "%%% " + self.title
-
+                title = "*** " + self.title + " ***"
                 box_size = max(box_size, len(title))
+
             if self.intro:
                 box_size = max(*[box_size] + [len(l) for l in self.intro])
 
@@ -244,6 +244,7 @@ class Deck(object):
                 if title:
                     banner += "| %s%s|\n" % (
                                 title, (" " * (box_size - len(title) - 2)))
+                    banner += "+%s+\n" % ("-" * (box_size - 1))
 
                 if self.intro:
                     banner += "\n".join(
