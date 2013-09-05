@@ -38,6 +38,7 @@ class Deck(object):
         self.current = 0
         self.init_slide = None
         self.color = options.get('color', None)
+        self.short_pres = options.get('short', False)
         self._set_presentation(options.get('presentation', False))
         self.pending_exec = False
         self._letter_commands = {}
@@ -454,6 +455,9 @@ class Deck(object):
                         slide.no_clear = True
                     elif opt == 's':
                         slide.init = True
+                    elif opt == 'l' and deck.short_pres:
+                        slide = None
+                        break
 
     def show_banner(self):
         print(self.banner)

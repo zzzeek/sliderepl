@@ -23,6 +23,10 @@ def main(argv=None, **kwargs):
     parser.add_argument("-q", "--quick", action="store_true",
                         default=True,
                       help="'Enter' key is a shortcut for 'next'")
+    parser.add_argument("-s", "--short", action="store_true",
+                        default=False,
+                      help="Run the 'short' version of the slides "
+                        "(skip those with 'l' flag)")
     parser.add_argument("--color", dest="color",
                         default=color_default,
                       choices=('never', 'auto', 'light', 'dark'),
