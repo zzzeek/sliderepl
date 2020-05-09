@@ -1,6 +1,7 @@
 include *.py
 
-include README* LICENSE 
+include README* LICENSE
 
 
-
+# avoid pep-517 install mode from pip
+exclude pyproject.toml

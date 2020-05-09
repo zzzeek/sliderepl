@@ -7,5 +7,4 @@ if sys.stdout.isatty():
     except ImportError:
         from sliderepl.core import Deck
 else:
-    from sliderepl.core import Deck
-
+    from sliderepl.core import Deck  # noqa
