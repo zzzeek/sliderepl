@@ -21,7 +21,7 @@ def main(argv=None, **kwargs):
         help="Execute all slides without prompting and exit.",
     )
     parser.add_argument(
-        "--presentation", action="store_true", help="Presentation mode"
+        "-p", "--presentation", action="store_true", help="Presentation mode"
     )
     parser.add_argument("--timer", action="store_true", help="Show timer")
     parser.add_argument(

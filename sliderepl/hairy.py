@@ -11,7 +11,7 @@ from . import core
 
 
 scheme = TERMINAL_COLORS.copy()
-scheme[Comment] = ("teal", "turquoise")
+scheme[Comment] = ("blue", "cyan")
 
 
 _pycon_lexer = get_lexer_by_name("pycon")
