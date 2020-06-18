@@ -482,7 +482,7 @@ class Deck(object):
 %% This is an interactive Python prompt.
 %% Enter "?" for help.
 %% Advance slides by pressing "enter",
-%% or entering the "n" or "next" command."""
+%% or entering the "!n" or "!next" command."""
 
     def readfunc(self, prompt=""):
         if self._exec_on_return:
