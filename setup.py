@@ -1,7 +1,12 @@
 import os
+import sys
 
 from setuptools import find_packages
 from setuptools import setup
+
+if sys.version_info < (3, 6):
+    raise Exception("Python 3.6 or higher is required.")
+
 
 readme = os.path.join(os.path.dirname(__file__), "README.rst")
 
