@@ -1,11 +1,7 @@
 import os
-import sys
 
 from setuptools import find_packages
 from setuptools import setup
-
-if sys.version_info < (3, 6):
-    raise Exception("Python 3.6 or higher is required.")
 
 
 readme = os.path.join(os.path.dirname(__file__), "README.rst")
@@ -26,6 +22,7 @@ setup(
         "Intended Audience :: Developers",
         "Programming Language :: Python :: 3",
     ],
+    python_requires=">= 3.6",
     keywords="",
     author="Jason Kirtland, Mike Bayer",
     author_email="mike@zzzcomputing.com",
