@@ -279,7 +279,11 @@ class Deck(object):
                     for j, l in enumerate(display):
                         if j == 0:
                             to_show = self.deck.ps1 + l
-                        elif l.startswith(" "):
+                        elif (
+                            l.startswith(" ")
+                            or l.startswith(")")
+                            or l.startswith("]")
+                        ):
                             to_show = self.deck.ps2 + l
                         elif not l.isspace():
                             to_show = self.deck.ps1 + l
