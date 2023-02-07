@@ -7,9 +7,13 @@
 import code
 import inspect
 import os
+from pathlib import Path
 import re
 import sys
 import traceback
+from typing import Any
+from typing import Dict
+from typing import Optional
 
 try:
     import rlcompleter
@@ -27,11 +31,20 @@ environ = None
 
 
 class Deck(object):
-    expose = ("next", "goto", "show", "info", "prev", "rerun", "presentation")
+    expose = (
+        "next",
+        "goto",
+        "show",
+        "info",
+        "prev",
+        "rerun",
+        "presentation",
+        "quit",
+    )
 
     _exec_on_return = False
 
-    def __init__(self, path=None, **options):
+    def __init__(self, path: Optional[Path] = None, **options: Dict[str, Any]):
         self.path = path or "<no file>"
         self.slides = []
         self.current = 0
@@ -96,6 +109,11 @@ class Deck(object):
     def next(self):
         """Advance to the next slide."""
         self._next()
+
+    def quit(self):
+        """Quit to menu / command prompt"""
+
+        raise EOFError("done")
 
     def _next(self, run=True):
         """Advance to the next slide."""
@@ -388,7 +406,6 @@ class Deck(object):
             readline.parse_and_bind("tab: complete")
             readline.set_completer(rlcompleter.Completer(environ).complete)
         console.interact(deck.banner)
-        sys.exit(0)
 
     @classmethod
     def from_path(cls, path, **options):
@@ -479,14 +496,17 @@ class Deck(object):
     @property
     def banner(self):
 
-        return """\
+        return f"""\
 %%
-%% Slide Runner
+%% Running Deck: {self.path}
 %%
 %% This is an interactive Python prompt.
-%% Enter "?" for help.
+%% Enter "?" for command list.
+%% Commands always begin with a ! symbol
 %% Advance slides by pressing "enter",
-%% or entering the "!n" or "!next" command."""
+%% or entering the "!n" or "!next" command.
+%% Quit out of this deck by entering the "!q" or "!quit" command.
+"""
 
     def readfunc(self, prompt=""):
         if self._exec_on_return:

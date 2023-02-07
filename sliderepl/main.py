@@ -1,8 +1,23 @@
 from argparse import ArgumentParser
 import os
+from pathlib import Path
 import sys
 
-from sliderepl import Deck
+import tomli
+
+from . import Deck
+from . import menu
+
+
+def _load_toml(config_file="pyproject.toml"):
+
+    if os.path.exists(config_file):
+        with open(config_file, "rb") as f:
+            toml_dict = tomli.load(f)  # type: ignore
+    else:
+        toml_dict = {}
+
+    return toml_dict.get("tool", {}).get("sliderepl", {})
 
 
 def main(argv=None, **kwargs):
@@ -14,7 +29,9 @@ def main(argv=None, **kwargs):
 
     parser = ArgumentParser()
 
-    parser.add_argument("script", type=str, help="script file to run")
+    parser.add_argument(
+        "script", type=str, help="script file to run", nargs="?"
+    )
     parser.add_argument(
         "--run-all",
         action="store_true",
@@ -24,6 +41,12 @@ def main(argv=None, **kwargs):
         "-p", "--presentation", action="store_true", help="Presentation mode"
     )
     parser.add_argument("--timer", action="store_true", help="Show timer")
+    parser.add_argument(
+        "--toml-config",
+        type=str,
+        default="pyproject.toml",
+        help="name / path of pyproject.toml file",
+    )
     parser.add_argument(
         "-q",
         "--quick",
@@ -51,11 +74,21 @@ def main(argv=None, **kwargs):
     )
 
     options = parser.parse_args(argv)
+
+    toml = _load_toml(options.toml_config)
+
+    slide_location = Path(".") / Path(toml.get("slides", "slides"))
+    config = slide_location / Path("/_config.py")
+
     deck = None
-    if os.path.exists("_config.py"):
+    if config.exists():
         locals_ = {}
-        exec(compile(open("_config.py").read(), "_config.py", "exec"), locals_)
+        exec(config.read_text(), locals_)
         deck = locals_.get("deck")
     if deck is None:
         deck = Deck
-    deck.run(options.script, **vars(options))
+
+    if options.script is None:
+        menu.menu(deck, options, slide_location)
+    else:
+        deck.run(options.script, **vars(options))
