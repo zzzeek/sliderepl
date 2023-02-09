@@ -54,16 +54,16 @@ class Deck(object):
         self._set_presentation(options.get("presentation", False))
         self.pending_exec = False
         self._letter_commands = {}
-        self._expose_map = dict(
-            ("!%s" % name, getattr(self, name)) for name in self.expose
+        self._expose_map: Dict[str, Any] = dict(
+            (f"!{name}", getattr(self, name)) for name in self.expose
         )
 
         for name in self.expose:
-            c = name[0]
-            if c in self._expose_map:
-                c = name[0:2]
-            self._expose_map["!%s" % c] = getattr(self, name)
-            self._letter_commands["!%s" % name] = "!%s" % c
+            short_cmd = f"!{name[0]}"
+            if short_cmd in self._expose_map:
+                short_cmd = f"!{name[0:2]}"
+            self._expose_map[short_cmd] = getattr(self, name)
+            self._letter_commands[f"!{name}"] = short_cmd
         self._expose_map["?"] = self.commands
 
     @property
@@ -406,6 +406,10 @@ class Deck(object):
             readline.parse_and_bind("tab: complete")
             readline.set_completer(rlcompleter.Completer(environ).complete)
         console.interact(deck.banner)
+        if readline:
+            # otherwise has history in the input() function used by the
+            # menu
+            readline.clear_history()
 
     @classmethod
     def from_path(cls, path, **options):

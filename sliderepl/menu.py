@@ -50,7 +50,11 @@ def menu(deck: Deck, options: Namespace, slides: Path) -> None:
             idx += 1
         print(_number_text("[Q]"), "Quit")
         prompt = "\n" + _prompt_text("[enter chapter number]: ")
-        line = input(prompt)
+        try:
+            line = input(prompt)
+        except EOFError:
+            break
+
         cmd = line.strip().lower()
         if cmd == "q":
             sys.exit()
