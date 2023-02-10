@@ -78,9 +78,10 @@ def main(argv=None, **kwargs):
     toml = _load_toml(options.toml_config)
 
     slide_location = Path(".") / Path(toml.get("slides", "slides"))
-    config = slide_location / Path("/_config.py")
+    config = slide_location / Path("_config.py")
 
     deck = None
+
     if config.exists():
         locals_ = {}
         exec(config.read_text(), locals_)
