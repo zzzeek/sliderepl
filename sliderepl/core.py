@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import re
 import sys
+import textwrap
 import traceback
 from typing import Any
 from typing import Dict
@@ -130,6 +131,34 @@ class Deck(object):
 
         self._do_slide(self.current, run=run)
 
+    def _do_bullet(self, bullet, *, last=False):
+        flip = False
+
+        indent = re.match(r"^ +\* ", bullet)
+        assert indent is not None
+        padding = len(indent.group(0)) * " "
+
+        bullet = "\n".join(
+            [
+                padding + line if lineno > 0 else line
+                for lineno, line in enumerate(textwrap.wrap(bullet))
+            ]
+        )
+
+        bullet = "".join(
+            ""
+            if element == "**" and ((flip := not flip) or True)
+            else self._color(element, "boldbullet")
+            if flip
+            else self._color(element, "bullet")
+            for element in re.split(r"(\*\*)", bullet)
+        )
+
+        if not last:
+            input(f"{bullet}\n\n")
+        else:
+            print(f"{bullet}\n\n")
+
     def _do_slide(self, num, run=True, echo=True):
         slide = self.slides[num - 1]
         if echo:
@@ -142,6 +171,11 @@ class Deck(object):
                     print(slide._banner())
             else:
                 print(slide._banner())
+
+            if slide.bullets:
+                last_bullet = slide.bullets[-1]
+                for bullet in slide.bullets:
+                    self._do_bullet(bullet, last=bullet is last_bullet)
 
         slide.run(run=run, echo=echo)
         if run != "force" and getattr(slide, "no_exec", False):
@@ -213,6 +247,7 @@ class Deck(object):
         no_exec = False
         no_echo = False
         init = False
+        has_bullets = False
         title = None
 
         def __init__(self, deck, file, index):
@@ -220,6 +255,7 @@ class Deck(object):
             self.codeblocks = []
             self.lines = []
             self.intro = []
+            self.bullets = []
             self._stack = []
             self._level = None
             self.file = file
@@ -239,31 +275,56 @@ class Deck(object):
 
             if self.title:
                 title = "*** " + self.title + " ***"
-                box_size = max(box_size, len(title))
+                title_len = len(title)
+                box_size = max(box_size, title_len)
+                title = self.deck._color(title, "titletext")
+            else:
+                title_len = 0
 
             if self.intro:
-                box_size = max(*[box_size] + [len(l) for l in self.intro])
+                box_size = max(
+                    *[box_size]
+                    + [len(self.deck._decolorize(l)) for l in self.intro]
+                )
 
             box_size += 4
 
             if not self.deck._presentation:
                 banner += "\n"
 
-            banner += "+%s+\n" % ("-" * (box_size - 1))
+            box_plus = self.deck._color("+", "box")
+            box_line = self.deck._color("|", "box")
+            box_dash = self.deck._color("-", "box")
+
+            banner += f"{box_plus}%s{box_plus}\n" % (box_dash * (box_size - 1))
 
             if title or self.intro:
 
                 if title:
-                    banner += "| %s%s|\n" % (
+                    banner += f"{box_line} %s%s{box_line}\n" % (
                         title,
-                        (" " * (box_size - len(title) - 2)),
+                        (" " * (box_size - title_len - 2)),
                     )
-                    banner += "+%s+\n" % ("-" * (box_size - 1))
+                    if self.intro:
+                        banner += f"{box_plus}%s{box_plus}\n" % (
+                            box_dash * (box_size - 1)
+                        )
 
                 if self.intro:
                     banner += (
                         "\n".join(
-                            "| %s%s|" % (l, (" " * (box_size - len(l) - 2)))
+                            f"{box_line} %s%s{box_line}"
+                            % (
+                                self.deck._color(l, "intro_line"),
+                                (
+                                    " "
+                                    * (
+                                        box_size
+                                        - len(self.deck._decolorize(l))
+                                        - 2
+                                    )
+                                ),
+                            )
                             for l in self.intro
                         )
                         + "\n"
@@ -273,8 +334,10 @@ class Deck(object):
 
             left_line = box_size - len(index) - 3
             right_line = box_size - left_line - len(index) - 1
-            banner += "+%s+\n" % (
-                ("-" * (left_line)) + index + ("-" * (right_line))
+            banner += f"{box_plus}%s{box_plus}\n" % (
+                (box_dash * (left_line))
+                + self.deck._color(index, "slidenum")
+                + (box_dash * (right_line))
             )
 
             return banner
@@ -425,6 +488,7 @@ class Deck(object):
         f_re = re.compile(r"### +file::(.+)$")
         t_re = re.compile(r"### +title::(.+)$")
         t_re_2 = re.compile(r"^#####* (.+) #####*$")
+        b_re = re.compile(r"^###( +\* .+)$")
 
         c_re = re.compile(r"#(?: (.*))?$")
 
@@ -452,6 +516,12 @@ class Deck(object):
                     slide.intro = []
                     slide.lines = []
                 continue
+
+            if slide and slide.has_bullets:
+                m = b_re.match(line)
+                if m:
+                    slide.bullets.append(m.group(1).rstrip())
+                    continue
 
             if slide:
                 m = c_re.match(line)
@@ -493,6 +563,8 @@ class Deck(object):
                     elif opt == "l" and deck.short_pres:
                         slide = None
                         break
+                    elif opt == "b":
+                        slide.has_bullets = True
 
     def show_banner(self):
         print(self.banner)
@@ -539,6 +611,12 @@ class Deck(object):
                     fn(*tokens[1:])
                 return ""
         return line
+
+    def _decolorize(self, text):
+        return re.sub(r"\!\!\{.+?}", "", text)
+
+    def _color(self, text, color_style):
+        return self._decolorize(text)
 
     def _highlight_text(self, text):
         return text

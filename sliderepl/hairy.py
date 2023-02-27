@@ -6,6 +6,7 @@ from pygments.formatters import TerminalFormatter
 from pygments.formatters.terminal import TERMINAL_COLORS
 from pygments.lexers import get_lexer_by_name
 from pygments.token import Comment
+from termcolor import colored
 
 from . import core
 
@@ -13,6 +14,17 @@ from . import core
 scheme = TERMINAL_COLORS.copy()
 scheme[Comment] = ("blue", "cyan")
 
+style_lookup = {
+    "box": ("blue",),
+    "slidenum": ("blue",),
+    "titletext": ("magenta", None, ["bold"]),
+    "intro_line": ("dark_grey", None, ["dark"]),
+    "bullet": ("dark_grey",),
+    "boldbullet": ("dark_grey", None, ["bold"]),
+    "red": ("red",),
+    "yellow": ("yellow",),
+    "letstalk": ("blue", None, []),
+}
 
 _pycon_lexer = get_lexer_by_name("pycon")
 
@@ -35,6 +47,22 @@ class Deck(core.Deck):
     def __init__(self, path, **options):
         core.Deck.__init__(self, path, **options)
         self._highlight = True
+
+    def _color(self, text, style):
+        output = ""
+        color = "reset"
+        for token in re.split(r"(\!\!\{.+?})", text):
+            directive = re.match(r"\!\!\{(.+?)}", token)
+            if directive:
+                color = directive.group(1)
+                continue
+
+            if color == "reset":
+                output += colored(token, *style_lookup[style])
+            else:
+                output += colored(token, *style_lookup[color])
+
+        return output
 
     def highlight_stdout(self, lexer):
         lexer = get_lexer_by_name(lexer)
