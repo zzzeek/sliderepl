@@ -14,18 +14,6 @@ from . import core
 scheme = TERMINAL_COLORS.copy()
 scheme[Comment] = ("blue", "cyan")
 
-style_lookup = {
-    "box": ("blue",),
-    "slidenum": ("blue",),
-    "titletext": ("magenta", None, ["bold"]),
-    "intro_line": ("dark_grey", None, ["dark"]),
-    "bullet": ("dark_grey",),
-    "boldbullet": ("dark_grey", None, ["bold"]),
-    "red": ("red",),
-    "yellow": ("yellow",),
-    "letstalk": ("blue", None, []),
-}
-
 _pycon_lexer = get_lexer_by_name("pycon")
 
 
@@ -42,6 +30,16 @@ class HighlightOutput(object):
 
 
 class Deck(core.Deck):
+    style_lookup = {
+        "box": ("blue",),
+        "slidenum": ("blue",),
+        "titletext": ("magenta", None, ["bold"]),
+        "intro_line": ("dark_grey", None, ["dark"]),
+        "bullet": ("dark_grey",),
+        "boldbullet": ("dark_grey", None, ["bold"]),
+        "plain": (),
+    }
+
     expose = core.Deck.expose + ("highlight",)
 
     def __init__(self, path, **options):
@@ -58,9 +56,9 @@ class Deck(core.Deck):
                 continue
 
             if color == "reset":
-                output += colored(token, *style_lookup[style])
+                output += colored(token, *self.style_lookup[style])
             else:
-                output += colored(token, *style_lookup[color])
+                output += colored(token, *self.style_lookup[color])
 
         return output
 

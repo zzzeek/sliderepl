@@ -45,6 +45,8 @@ class Deck(object):
 
     _exec_on_return = False
 
+    banner_top = ""
+
     def __init__(self, path: Optional[Path] = None, **options: Dict[str, Any]):
         self.path = path or "<no file>"
         self.slides = []
@@ -131,7 +133,7 @@ class Deck(object):
 
         self._do_slide(self.current, run=run)
 
-    def _do_bullet(self, bullet, *, last=False):
+    def _do_bullet(self, bullet, *, prompt=True):
         flip = False
 
         indent = re.match(r"^ +\* ", bullet)
@@ -154,7 +156,7 @@ class Deck(object):
             for element in re.split(r"(\*\*)", bullet)
         )
 
-        if not last:
+        if prompt:
             input(f"{bullet}\n\n")
         else:
             print(f"{bullet}\n\n")
@@ -165,6 +167,7 @@ class Deck(object):
             if self._presentation:
                 if not slide.no_clear:
                     os.system(clearcmd)
+                    print(self.banner_top)
                     print(slide._banner())
                 else:
                     print("")
@@ -174,8 +177,11 @@ class Deck(object):
 
             if slide.bullets and run != "force":
                 last_bullet = slide.bullets[-1]
+                has_code = bool(slide.codeblocks)
                 for bullet in slide.bullets:
-                    self._do_bullet(bullet, last=bullet is last_bullet)
+                    self._do_bullet(
+                        bullet, prompt=has_code or bullet is not last_bullet
+                    )
 
         slide.run(run=run, echo=echo)
         if run != "force" and getattr(slide, "no_exec", False):
@@ -264,14 +270,13 @@ class Deck(object):
             self.index = index
 
         def _banner(self):
-            # not doing the full banners for now
 
             banner = ""
 
             box_size = 63
 
             if not self.title and not self.intro:
-                return ""
+                return banner
 
             title = None
 
