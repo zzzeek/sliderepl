@@ -172,7 +172,7 @@ class Deck(object):
             else:
                 print(slide._banner())
 
-            if slide.bullets:
+            if slide.bullets and run != "force":
                 last_bullet = slide.bullets[-1]
                 for bullet in slide.bullets:
                     self._do_bullet(bullet, last=bullet is last_bullet)
@@ -211,10 +211,12 @@ class Deck(object):
         self.pending_exec = False
         if slide_number <= self.current:
             self.current = slide_number
-            self._do_slide(self.current, run="force")
+            self._do_slide(self.current)
         else:
-            for _ in range(slide_number - self.current):
+            rg = range(slide_number - self.current)
+            for _ in rg[0:-1]:
                 self._next(run="force")
+            self._next()
 
     def info(self):
         """Display information about this slide deck."""
