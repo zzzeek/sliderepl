@@ -36,6 +36,7 @@ class Deck(core.Deck):
         "titletext": ("magenta", None, ["bold"]),
         "intro_line": ("dark_grey", None, ["dark"]),
         "bullet": ("dark_grey",),
+        "codebullet": ("blue",),
         "boldbullet": ("dark_grey", None, ["bold"]),
         "plain": (),
     }

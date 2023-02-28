@@ -134,7 +134,6 @@ class Deck(object):
         self._do_slide(self.current, run=run)
 
     def _do_bullet(self, bullet, *, prompt=True):
-        flip = False
 
         indent = re.match(r"^ +\* ", bullet)
         assert indent is not None
@@ -147,14 +146,20 @@ class Deck(object):
             ]
         )
 
-        bullet = "".join(
-            ""
-            if element == "**" and ((flip := not flip) or True)
-            else self._color(element, "boldbullet")
-            if flip
-            else self._color(element, "bullet")
-            for element in re.split(r"(\*\*)", bullet)
-        )
+        bullet_tokens = re.match(r"^( +)\* (.*)", bullet, re.S)
+
+        assert bullet_tokens
+
+        bullet = self._color(f"{bullet_tokens.group(1)}\u2022 ", "boldbullet")
+
+        color = "plain"
+        for element in re.split(r"(\*\*|``)", bullet_tokens.group(2)):
+            if element == "**":
+                color = "boldbullet" if color != "boldbullet" else "plain"
+            elif element == "``":
+                color = "codebullet" if color != "codebullet" else "plain"
+            else:
+                bullet += self._color(element, color)
 
         if prompt:
             input(f"{bullet}\n\n")
@@ -170,7 +175,6 @@ class Deck(object):
                     print(self.banner_top)
                     print(slide._banner())
                 else:
-                    print("")
                     print(slide._banner())
             else:
                 print(slide._banner())
