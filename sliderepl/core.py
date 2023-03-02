@@ -303,11 +303,17 @@ class Deck(object):
             if not self.deck._presentation:
                 banner += "\n"
 
-            box_plus = self.deck._color("+", "box")
-            box_line = self.deck._color("|", "box")
-            box_dash = self.deck._color("-", "box")
+            # box_plus = self.deck._color("+", "box")
+            box_ul = self.deck._color("\u250C", "box")
+            box_ur = self.deck._color("\u2510", "box")
+            box_ll = self.deck._color("\u2514", "box")
+            box_lr = self.deck._color("\u2518", "box")
+            box_ls = self.deck._color("\u251C", "box")
+            box_rs = self.deck._color("\u2524", "box")
+            box_line = self.deck._color("\u2502", "box")  # |
+            box_dash = self.deck._color("\u2500", "box")  # -
 
-            banner += f"{box_plus}%s{box_plus}\n" % (box_dash * (box_size - 1))
+            banner += f"{box_ul}%s{box_ur}\n" % (box_dash * (box_size - 1))
 
             if title or self.intro:
 
@@ -317,7 +323,7 @@ class Deck(object):
                         (" " * (box_size - title_len - 2)),
                     )
                     if self.intro:
-                        banner += f"{box_plus}%s{box_plus}\n" % (
+                        banner += f"{box_ls}%s{box_rs}\n" % (
                             box_dash * (box_size - 1)
                         )
 
@@ -345,7 +351,7 @@ class Deck(object):
 
             left_line = box_size - len(index) - 3
             right_line = box_size - left_line - len(index) - 1
-            banner += f"{box_plus}%s{box_plus}\n" % (
+            banner += f"{box_ll}%s{box_lr}\n" % (
                 (box_dash * (left_line))
                 + self.deck._color(index, "slidenum")
                 + (box_dash * (right_line))
