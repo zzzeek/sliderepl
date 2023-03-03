@@ -31,6 +31,11 @@ else:
 environ = None
 
 
+class ReallyRerun(Exception):
+    def __init__(self, slide):
+        self.slide = slide
+
+
 class Deck(object):
     expose = (
         "next",
@@ -40,6 +45,7 @@ class Deck(object):
         "prev",
         "rerun",
         "presentation",
+        "rreallyrerun",
         "quit",
     )
 
@@ -51,6 +57,7 @@ class Deck(object):
         self.path = path or "<no file>"
         self.slides = []
         self.current = 0
+        self.current_top_slide = 0
         self.init_slide = None
         self.color = options.get("color", None)
         self.short_pres = options.get("short", False)
@@ -100,6 +107,11 @@ class Deck(object):
 
         self.pending_exec = False
         self._do_slide(self.current)
+
+    def rreallyrerun(self):
+        """reload the whole deck and come back to this slide"""
+
+        raise ReallyRerun(self.current_top_slide)
 
     def prev(self):
         """Advance to the previous slide."""
@@ -174,6 +186,7 @@ class Deck(object):
                     os.system(clearcmd)
                     print(self.banner_top)
                     print(slide._banner())
+                    self.current_top_slide = num
                 else:
                     print(slide._banner())
             else:
@@ -461,35 +474,46 @@ class Deck(object):
         if path is None:
             path = sys.argv[0]
 
-        deck = cls.from_path(path, **options)
-        if not deck:
-            sys.stderr.write("Aborting: no slides!\n")
-            sys.exit(-1)
+        _goto = None
+        while True:
+            deck = cls.from_path(path, **options)
+            if not deck:
+                sys.stderr.write("Aborting: no slides!\n")
+                sys.exit(-1)
 
-        deck.start()
+            deck.start()
 
-        if options.get("run_all"):
-            deck.goto(len(deck.slides))
-            sys.exit(0)
+            if options.get("run_all"):
+                deck.goto(len(deck.slides))
+                sys.exit(0)
 
-        console = code.InteractiveConsole()
-        global environ
-        environ = console.locals
+            console = code.InteractiveConsole()
+            global environ
+            environ = console.locals
 
-        if deck.init_slide:
-            for display, co in deck.init_slide.codeblocks:
-                exec(co, environ)
-            print("%% executed initial setup slide.")
+            if deck.init_slide:
+                for display, co in deck.init_slide.codeblocks:
+                    exec(co, environ)
+                print("%% executed initial setup slide.")
 
-        console.raw_input = deck.readfunc
-        if readline:
-            readline.parse_and_bind("tab: complete")
-            readline.set_completer(rlcompleter.Completer(environ).complete)
-        console.interact(deck.banner)
-        if readline:
-            # otherwise has history in the input() function used by the
-            # menu
-            readline.clear_history()
+            if _goto:
+                deck.goto(_goto)
+
+            console.raw_input = deck.readfunc
+            if readline:
+                readline.parse_and_bind("tab: complete")
+                readline.set_completer(rlcompleter.Completer(environ).complete)
+            try:
+                console.interact(deck.banner if _goto is None else "")
+            except ReallyRerun as rr:
+                _goto = rr.slide
+            else:
+                break
+            finally:
+                if readline:
+                    # otherwise has history in the input() function used by the
+                    # menu
+                    readline.clear_history()
 
     @classmethod
     def from_path(cls, path, **options):
