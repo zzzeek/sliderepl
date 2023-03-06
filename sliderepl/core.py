@@ -14,7 +14,6 @@ import sys
 import textwrap
 import traceback
 from typing import Any
-from typing import cast
 from typing import Dict
 from typing import MutableMapping
 from typing import Optional
@@ -61,7 +60,7 @@ class Deck:
         self.slides = []
         self.current = 0
         self.current_top_slide = 0
-        self.init_slide = None
+        self.init_slide: Optional[Deck.Slide] = None
         self.color = options.get("color", None)
         self.short_pres = options.get("short", False)
         self._set_presentation(options.get("presentation", False))
@@ -493,14 +492,17 @@ class Deck:
                 deck.goto(len(deck.slides))
                 sys.exit(0)
 
-            console = code.InteractiveConsole()
             global environ
-            environ = cast(MutableMapping[str, Any], console.locals)
+            environ = {"__name__": "__console__", "__doc__": None}
+
+            # environ['environ'] = environ  # useful for debugging
+
+            console = code.InteractiveConsole(locals=environ)
 
             deck.setup_environ(environ)
 
             if deck.init_slide:
-                for display, co in deck.init_slide.codeblocks:
+                for _, co in deck.init_slide.codeblocks:
                     exec(co, environ)
                 print("%% executed initial setup slide.")
 
