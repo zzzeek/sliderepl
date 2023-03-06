@@ -3,6 +3,7 @@
 #   Copyright (c) Michael Bayer <mike_mp@zzzcomputing.com>
 #   sliderepl is released under the MIT License:
 #   http://www.opensource.org/licenses/mit-license.php
+from __future__ import annotations
 
 import code
 import inspect
@@ -13,7 +14,9 @@ import sys
 import textwrap
 import traceback
 from typing import Any
+from typing import cast
 from typing import Dict
+from typing import MutableMapping
 from typing import Optional
 
 try:
@@ -36,7 +39,7 @@ class ReallyRerun(Exception):
         self.slide = slide
 
 
-class Deck(object):
+class Deck:
     expose = (
         "next",
         "goto",
@@ -75,6 +78,9 @@ class Deck(object):
             self._expose_map[short_cmd] = getattr(self, name)
             self._letter_commands[f"!{name}"] = short_cmd
         self._expose_map["?"] = self.commands
+
+    def setup_environ(self, environ: MutableMapping[str, Any]) -> None:
+        pass
 
     @property
     def highlight_stdout(self):
@@ -469,10 +475,10 @@ class Deck(object):
             return lines
 
     @classmethod
-    def run(cls, path=None, **options):
+    def run(cls, path: Optional[Path] = None, **options):
         """Run an interactive session for a Deck and exit when complete."""
         if path is None:
-            path = sys.argv[0]
+            path = Path(sys.argv[0])
 
         _goto = None
         while True:
@@ -489,7 +495,9 @@ class Deck(object):
 
             console = code.InteractiveConsole()
             global environ
-            environ = console.locals
+            environ = cast(MutableMapping[str, Any], console.locals)
+
+            deck.setup_environ(environ)
 
             if deck.init_slide:
                 for display, co in deck.init_slide.codeblocks:
@@ -516,12 +524,12 @@ class Deck(object):
                     readline.clear_history()
 
     @classmethod
-    def from_path(cls, path, **options):
+    def from_path(cls, path: Path, **options: Any) -> Deck:
         """Create a Deck from slides embedded in a file at path."""
 
         deck = cls(path, **options)
         cls._slides_from_file(path, deck)
-        return deck.slides and deck or None
+        return deck
 
     @classmethod
     def _slides_from_file(cls, path, deck):
