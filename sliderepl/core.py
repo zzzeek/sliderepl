@@ -55,6 +55,9 @@ class Deck:
 
     banner_top = ""
 
+    min_banner_width = 67
+    bullet_width = 70
+
     def __init__(self, path: Optional[Path] = None, **options: Dict[str, Any]):
         self.path = path or "<no file>"
         self.slides = []
@@ -159,7 +162,9 @@ class Deck:
         bullet = "\n".join(
             [
                 padding + line if lineno > 0 else line
-                for lineno, line in enumerate(textwrap.wrap(bullet))
+                for lineno, line in enumerate(
+                    textwrap.wrap(bullet, width=self.bullet_width)
+                )
             ]
         )
 
@@ -206,7 +211,7 @@ class Deck:
                     )
 
         slide.run(run=run, echo=echo)
-        if run != "force" and getattr(slide, "no_exec", False):
+        if run != "force" and slide.no_exec and not slide.never_exec:
             self.pending_exec = True
 
     def slide_actor(fn):
@@ -275,6 +280,7 @@ class Deck:
     class Slide(object):
         no_clear = False
         no_exec = False
+        never_exec = False
         no_echo = False
         init = False
         has_bullets = False
@@ -295,7 +301,7 @@ class Deck:
 
             banner = ""
 
-            box_size = 63
+            box_size = self.deck.min_banner_width - 4
 
             if not self.title and not self.intro:
                 return banner
@@ -378,7 +384,7 @@ class Deck:
             return banner
 
         def run(self, run=True, echo=True):
-            if run is True and echo and getattr(self, "no_exec", False):
+            if run is True and echo and self.no_exec:
                 run = False
 
             for i, (display, co) in enumerate(self.codeblocks):
@@ -393,23 +399,40 @@ class Deck:
                             display.pop(-1)
 
                     for j, l in enumerate(display):
+
+                        # this allows for multiline strings in slides
+                        # that will display as code, but not actually run
+                        # as anything more than a string (and also not be
+                        # anything more than a plain string in the source file)
+                        if l.strip() == '"""':
+                            continue
+
+                        ps1 = self.deck.ps1
+                        ps2 = self.deck.ps2
+
                         if j == 0:
-                            to_show = self.deck.ps1 + l
+                            to_show = ps1 + l
                         elif (
                             l.startswith(" ")
                             or l.startswith(")")
                             or l.startswith("]")
                         ):
-                            to_show = self.deck.ps2 + l
+                            to_show = ps2 + l
                         elif not l.isspace():
-                            to_show = self.deck.ps1 + l
+                            to_show = ps1 + l
                         else:
                             to_show = l
 
                         to_show = to_show
 
-                        if not run and last_block and j == len(display) - 1:
+                        if (
+                            not run
+                            and not self.never_exec
+                            and last_block
+                            and j == len(display) - 1
+                        ):
                             self.deck._exec_on_return = True
+
                         shown.append(to_show)
 
                     Deck._add_history("".join(display).rstrip())
@@ -419,7 +442,7 @@ class Deck:
                         shown = shown.rstrip() + "\n"
                     sys.stdout.write(self.deck._highlight_text(shown))
 
-                if run:
+                if run and not self.never_exec:
                     try:
                         exec(co, environ)
                     except:
@@ -607,6 +630,8 @@ class Deck:
                 for opt in opts:
                     if opt == "p":
                         slide.no_exec = True
+                    elif opt == "x":
+                        slide.never_exec = slide.no_exec = True
                     elif opt == "i":
                         slide.no_clear = True
                     elif opt == "s":
