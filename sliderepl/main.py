@@ -10,7 +10,6 @@ from . import menu
 
 
 def _load_toml(config_file="pyproject.toml"):
-
     if os.path.exists(config_file):
         with open(config_file, "rb") as f:
             toml_dict = tomli.load(f)  # type: ignore
@@ -21,7 +20,6 @@ def _load_toml(config_file="pyproject.toml"):
 
 
 def main(argv=None, **kwargs):
-
     if sys.platform == "win32":
         color_default = "never"
     else:

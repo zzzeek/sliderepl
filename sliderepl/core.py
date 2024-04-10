@@ -154,7 +154,6 @@ class Deck:
         self._do_slide(self.current, run=run)
 
     def _do_bullet(self, bullet, *, prompt=True):
-
         indent = re.match(r"^ +\* ", bullet)
         assert indent is not None
         padding = len(indent.group(0)) * " "
@@ -261,7 +260,6 @@ class Deck:
     def commands(self):
         """Display this help message."""
         for cmd in ["?"] + ["!%s" % exp for exp in self.expose]:
-
             line_start = (
                 "% "
                 + cmd
@@ -298,7 +296,6 @@ class Deck:
             self.index = index
 
         def _banner(self):
-
             banner = ""
 
             box_size = self.deck.min_banner_width - 4
@@ -340,7 +337,6 @@ class Deck:
             banner += f"{box_ul}%s{box_ur}\n" % (box_dash * (box_size - 1))
 
             if title or self.intro:
-
                 if title:
                     banner += f"{box_line} %s%s{box_line}\n" % (
                         title,
@@ -399,7 +395,6 @@ class Deck:
                             display.pop(-1)
 
                     for j, l in enumerate(display):
-
                         # this allows for multiline strings in slides
                         # that will display as code, but not actually run
                         # as anything more than a string (and also not be
@@ -647,7 +642,6 @@ class Deck:
 
     @property
     def banner(self):
-
         return f"""\
 %%
 %% Running Deck: {self.path}
