@@ -671,10 +671,13 @@ class Deck:
                 and tokens[0] in self._expose_map
             ):
                 fn = self._expose_map[tokens[0]]
-                if len(tokens) != len(inspect.getargspec(fn)[0]):
+                if len(tokens) != len(inspect.getfullargspec(fn)[0]):
                     print(
                         "usage: %s %s"
-                        % (tokens[0], " ".join(inspect.getargspec(fn)[0][1:]))
+                        % (
+                            tokens[0],
+                            " ".join(inspect.getfullargspec(fn)[0][1:]),
+                        )
                     )
                 else:
                     self._add_history(line)
